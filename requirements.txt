@@ -1,10 +1,11 @@
-torch
+accelerate
+datasets
+git+ssh://git@github.com/25-111/diffusers.git
+gradio
+librosa
+noisereduce
 numpy
 Pillow
-diffusers>=0.10.0
-librosa
-datasets
-gradio
 streamlit
 tensorboard
-accelerate
+torch
