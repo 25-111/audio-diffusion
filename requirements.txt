@@ -1,6 +1,6 @@
 accelerate
 datasets
-git+ssh://git@github.com/25-111/diffusers.git
+diffusers
 gradio
 librosa
 noisereduce
