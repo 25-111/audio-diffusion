@@ -22,10 +22,16 @@ from typing import List, Tuple, Union
 import numpy as np
 import torch
 from diffusers import AutoencoderKL, DDIMScheduler, DDPMScheduler, UNet2DConditionModel
-from diffusers.pipeline_utils import AudioPipelineOutput, BaseOutput, DiffusionPipeline, ImagePipelineOutput
+from diffusers.pipeline_utils import (
+    AudioPipelineOutput,
+    BaseOutput,
+    DiffusionPipeline,
+    ImagePipelineOutput,
+)
 from PIL import Image
 
 from .mel import Mel
+
 
 class AudioDiffusionPipeline(DiffusionPipeline):
     """
@@ -164,11 +170,16 @@ class AudioDiffusionPipeline(DiffusionPipeline):
             mask_end = int(mask_end_secs * pixels_per_second)
             mask = self.scheduler.add_noise(input_images, noise, torch.tensor(self.scheduler.timesteps[start_step:]))
 
+        frames = []
         for step, t in enumerate(self.progress_bar(self.scheduler.timesteps[start_step:])):
             if isinstance(self.unet, UNet2DConditionModel):
                 model_output = self.unet(images, t, encoding)["sample"]
             else:
                 model_output = self.unet(images, t)["sample"]
+            inter_images = (model_output / 2 + 0.5).clamp(0, 1)
+            inter_images = inter_images.cpu().permute(0, 2, 3, 1).numpy()
+            inter_images = (inter_images * 255).round().astype("uint8")
+            frames.append(inter_images[0])
 
             if isinstance(self.scheduler, DDIMScheduler):
                 images = self.scheduler.step(
@@ -208,9 +219,12 @@ class AudioDiffusionPipeline(DiffusionPipeline):
 
         audios = list(map(lambda _: self.mel.image_to_audio(_), images))
         if not return_dict:
-            return images, (self.mel.get_sample_rate(), audios)
+            return images, (self.mel.get_sample_rate(), audios), frames
 
-        return BaseOutput(**AudioPipelineOutput(np.array(audios)[:, np.newaxis, :]), **ImagePipelineOutput(images))
+        return (
+            BaseOutput(**AudioPipelineOutput(np.array(audios)[:, np.newaxis, :]), **ImagePipelineOutput(images)),
+            frames,
+        )
 
     @torch.no_grad()
     def encode(self, images: List[Image.Image], steps: int = 50) -> np.ndarray:

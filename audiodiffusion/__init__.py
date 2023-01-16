@@ -55,7 +55,7 @@ class AudioDiffusion:
             PIL Image: mel spectrogram
             (float, np.ndarray): sample rate and raw audio
         """
-        images, (sample_rate, audios) = self.pipe(
+        images, (sample_rate, audios), frames = self.pipe(
             batch_size=1,
             steps=steps,
             generator=generator,
@@ -65,7 +65,7 @@ class AudioDiffusion:
             encoding=encoding,
             return_dict=False,
         )
-        return images[0], (sample_rate, audios[0])
+        return images[0], (sample_rate, audios[0]), frames
 
     def generate_spectrogram_and_audio_from_audio(
         self,
