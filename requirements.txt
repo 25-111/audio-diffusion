@@ -5,6 +5,7 @@ gradio
 librosa
 noisereduce
 numpy
+opencv-python
 Pillow
 streamlit
 tensorboard
