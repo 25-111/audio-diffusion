@@ -96,7 +96,7 @@ class AudioDiffusionPipeline(DiffusionPipeline):
         eta: float = 0,
         noise: torch.Tensor = None,
         encoding: torch.Tensor = None,
-        return_dict=True,
+        return_dict: bool = False,
     ) -> Union[
         Union[AudioPipelineOutput, ImagePipelineOutput],
         Tuple[List[Image.Image], Tuple[int, List[np.ndarray]]],
@@ -117,7 +117,6 @@ class AudioDiffusionPipeline(DiffusionPipeline):
             eta (`float`): parameter between 0 and 1 used with DDIM scheduler
             noise (`torch.Tensor`): noise tensor of shape (batch_size, 1, height, width) or None
             encoding (`torch.Tensor`): for UNet2DConditionModel shape (batch_size, seq_length, cross_attention_dim)
-            return_dict (`bool`): if True return AudioPipelineOutput, ImagePipelineOutput else Tuple
 
         Returns:
             `List[PIL Image]`: mel spectrograms (`float`, `List[np.ndarray]`): sample rate and raw audios
@@ -176,10 +175,6 @@ class AudioDiffusionPipeline(DiffusionPipeline):
                 model_output = self.unet(images, t, encoding)["sample"]
             else:
                 model_output = self.unet(images, t)["sample"]
-            inter_images = (model_output / 2 + 0.5).clamp(0, 1)
-            inter_images = inter_images.cpu().permute(0, 2, 3, 1).numpy()
-            inter_images = (inter_images * 255).round().astype("uint8")
-            frames.append(inter_images[0])
 
             if isinstance(self.scheduler, DDIMScheduler):
                 images = self.scheduler.step(
@@ -203,10 +198,11 @@ class AudioDiffusionPipeline(DiffusionPipeline):
                 if mask_end > 0:
                     images[:, :, :, -mask_end:] = mask[:, step, :, -mask_end:]
 
-        if self.vqvae is not None:
-            # 0.18215 was scaling factor used in training to ensure unit variance
-            images = 1 / 0.18215 * images
-            images = self.vqvae.decode(images)["sample"]
+            inter_images = (images / 2 + 0.5).clamp(0, 1)
+            inter_images = inter_images.cpu().permute(0, 2, 3, 1).numpy()
+            inter_images = (inter_images * 255).round().astype("uint8")
+            inter_images = list(map(lambda _: Image.fromarray(_[:, :, 0]), inter_images))
+            frames.append(inter_images[0])
 
         images = (images / 2 + 0.5).clamp(0, 1)
         images = images.cpu().permute(0, 2, 3, 1).numpy()
@@ -218,13 +214,8 @@ class AudioDiffusionPipeline(DiffusionPipeline):
         )
 
         audios = list(map(lambda _: self.mel.image_to_audio(_), images))
-        if not return_dict:
-            return images, (self.mel.get_sample_rate(), audios), frames
 
-        return (
-            BaseOutput(**AudioPipelineOutput(np.array(audios)[:, np.newaxis, :]), **ImagePipelineOutput(images)),
-            frames,
-        )
+        return images, (self.mel.get_sample_rate(), audios), frames
 
     @torch.no_grad()
     def encode(self, images: List[Image.Image], steps: int = 50) -> np.ndarray:
