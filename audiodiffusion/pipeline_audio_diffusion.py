@@ -169,7 +169,7 @@ class AudioDiffusionPipeline(DiffusionPipeline):
             mask_end = int(mask_end_secs * pixels_per_second)
             mask = self.scheduler.add_noise(input_images, noise, torch.tensor(self.scheduler.timesteps[start_step:]))
 
-        frames = []
+        frames = [noise[0]]
         for step, t in enumerate(self.progress_bar(self.scheduler.timesteps[start_step:])):
             if isinstance(self.unet, UNet2DConditionModel):
                 model_output = self.unet(images, t, encoding)["sample"]
