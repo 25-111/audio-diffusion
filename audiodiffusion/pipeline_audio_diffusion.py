@@ -198,22 +198,18 @@ class AudioDiffusionPipeline(DiffusionPipeline):
                 if mask_end > 0:
                     images[:, :, :, -mask_end:] = mask[:, step, :, -mask_end:]
 
-            inter_images = (images / 2 + 0.5).clamp(0, 1)
-            inter_images = inter_images.cpu().permute(0, 2, 3, 1).numpy()
-            inter_images = (inter_images * 255).round().astype("uint8")
-            inter_images = list(map(lambda _: Image.fromarray(_[:, :, 0]), inter_images))
-            frames.append(inter_images[0])
+            frames.append(images[0])
 
-        images = (images / 2 + 0.5).clamp(0, 1)
-        images = images.cpu().permute(0, 2, 3, 1).numpy()
-        images = (images * 255).round().astype("uint8")
-        images = list(
-            map(lambda _: Image.fromarray(_[:, :, 0]), images)
-            if images.shape[3] == 1
-            else map(lambda _: Image.fromarray(_, mode="RGB").convert("L"), images)
+        pil_images = (images / 2 + 0.5).clamp(0, 1)
+        pil_images = pil_images.cpu().permute(0, 2, 3, 1).numpy()
+        pil_images = (pil_images * 255).round().astype("uint8")
+        pil_images = list(
+            map(lambda _: Image.fromarray(_[:, :, 0]), pil_images)
+            if pil_images.shape[3] == 1
+            else map(lambda _: Image.fromarray(_, mode="RGB").convert("L"), pil_images)
         )
 
-        audios = list(map(lambda _: self.mel.image_to_audio(_), images))
+        audios = list(map(lambda _: self.mel.image_to_audio(_), pil_images))
 
         return images, (self.mel.get_sample_rate(), audios), frames
 
