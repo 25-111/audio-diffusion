@@ -1,6 +1,6 @@
 accelerate
 datasets
-diffusers
+diffusers==0.10.2
 gradio
 librosa
 noisereduce
